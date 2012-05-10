@@ -1,29 +1,50 @@
-# Fluent::Plugin::Ikachan
+# fluent-plugin-ikachan
 
-TODO: Write a gem description
+## Component
 
-## Installation
+### IkachanOutput
 
-Add this line to your application's Gemfile:
+Plugin to send message to IRC, over IRC-HTTP bridge 'Ikachan' by yappo.
 
-    gem 'fluent-plugin-ikachan'
+About Ikachan:
+ * https://metacpan.org/module/ikachan
+ * http://blog.yappo.jp/yappo/archives/000760.html (Japanese)
 
-And then execute:
+## Configuration
 
-    $ bundle
+### IkachanOutput
 
-Or install it yourself as:
+Before testing of fluent-plugin-ikachan, you should invoke 'ikachan' process::
 
-    $ gem install fluent-plugin-ikachan
+    ### at first, install perl and cpanm (App::cpanminus)
+    cpanm App::ikachan
+    ikachan -S your.own.irc.server -P port
 
-## Usage
+And then, configure out_ikachan::
 
-TODO: Write usage instructions here
+    <match alert.**>
+      # ikachan host/port(default 4979)
+      host localhost
+      port 4979
+      # channel to notify (this means #morischan)
+      channel morischan
+      message notice: %s [%s] %s
+      out_keys tag,time,msg
+      time_key time
+      time_format %Y/%m/%d %H:%M:%S
+      tag_key tag
+    </match>
+    
+You will got message like 'notice: alert.servicename [2012/05/10 18:51:59] alert message in attribute "msg"'.
 
-## Contributing
+## TODO
 
-1. Fork it
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Added some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
+* implement 'tag_mapped'
+* implement 'time' and 'tag' in key_names
+
+## Copyright
+
+* Copyright
+  * Copyright (c) 2012- TAGOMORI Satoshi (tagomoris)
+* License
+  * Apache License, Version 2.0
