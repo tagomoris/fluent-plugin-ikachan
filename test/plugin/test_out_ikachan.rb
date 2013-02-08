@@ -1,4 +1,5 @@
 require 'helper'
+require 'cgi'
 
 class IkachanOutputTest < Test::Unit::TestCase
   IKACHAN_TEST_LISTEN_PORT = 4979
@@ -48,31 +49,103 @@ class IkachanOutputTest < Test::Unit::TestCase
     assert_equal '#morischan', d.instance.channel
   end
 
+  # CONFIG = %[
+  #   host localhost
+  #   channel morischan
+  #   message out_ikachan: %s [%s] %s
+  #   out_keys tag,time,msg
+  #   privmsg_message out_ikachan: %s [%s] %s
+  #   privmsg_out_keys tag,time,msg
+  #   time_key time
+  #   time_format %Y/%m/%d %H:%M:%S
+  #   tag_key tag
+  # ]
   def test_notice_and_privmsg
     d = create_driver
-    time = Time.now.to_i
+    t = Time.now
+    time = t.to_i
+    ts = t.strftime(d.instance.time_format)
     d.run do
       d.emit({'msg' => "both notice and privmsg message from fluentd out_ikachan: testing now"}, time)
       d.emit({'msg' => "both notice and privmsg message from fluentd out_ikachan: testing second line"}, time)
     end
+
+    assert_equal 4, @posted.length
+
+    assert_equal 'notice', @posted[0][:method]
+    assert_equal '#morischan', @posted[0][:channel]
+    assert_equal "out_ikachan: test [#{ts}] both notice and privmsg message from fluentd out_ikachan: testing now", @posted[0][:message]
+
+    assert_equal 'privmsg', @posted[1][:method]
+    assert_equal '#morischan', @posted[1][:channel]
+    assert_equal "out_ikachan: test [#{ts}] both notice and privmsg message from fluentd out_ikachan: testing now", @posted[1][:message]
+
+    assert_equal 'notice', @posted[2][:method]
+    assert_equal '#morischan', @posted[2][:channel]
+    assert_equal "out_ikachan: test [#{ts}] both notice and privmsg message from fluentd out_ikachan: testing second line", @posted[2][:message]
+    assert_equal 'privmsg', @posted[3][:method]
+    assert_equal '#morischan', @posted[3][:channel]
+    assert_equal "out_ikachan: test [#{ts}] both notice and privmsg message from fluentd out_ikachan: testing second line", @posted[3][:message]
   end
 
+  # CONFIG_NOTICE_ONLY = %[
+  #   host localhost
+  #   channel morischan
+  #   message out_ikachan: %s [%s] %s
+  #   out_keys tag,time,msg
+  #   time_key time
+  #   time_format %Y/%m/%d %H:%M:%S
+  #   tag_key tag
+  # ]
   def test_notice_only
     d = create_driver(CONFIG_NOTICE_ONLY)
-    time = Time.now.to_i
+    t = Time.now
+    time = t.to_i
+    ts = t.strftime(d.instance.time_format)
     d.run do
       d.emit({'msg' => "notice message from fluentd out_ikachan: testing now"}, time)
       d.emit({'msg' => "notice message from fluentd out_ikachan: testing second line"}, time)
     end
+
+    assert_equal 2, @posted.length
+
+    assert_equal 'notice', @posted[0][:method]
+    assert_equal '#morischan', @posted[0][:channel]
+    assert_equal "out_ikachan: test [#{ts}] notice message from fluentd out_ikachan: testing now", @posted[0][:message]
+
+    assert_equal 'notice', @posted[1][:method]
+    assert_equal '#morischan', @posted[1][:channel]
+    assert_equal "out_ikachan: test [#{ts}] notice message from fluentd out_ikachan: testing second line", @posted[1][:message]
   end
 
+  # CONFIG_PRIVMSG_ONLY = %[
+  #   host localhost
+  #   channel morischan
+  #   privmsg_message out_ikachan: %s [%s] %s
+  #   privmsg_out_keys tag,time,msg
+  #   time_key time
+  #   time_format %Y/%m/%d %H:%M:%S
+  #   tag_key tag
+  # ]
   def test_privmsg_only
     d = create_driver(CONFIG_PRIVMSG_ONLY)
-    time = Time.now.to_i
+    t = Time.now
+    time = t.to_i
+    ts = t.strftime(d.instance.time_format)
     d.run do
       d.emit({'msg' => "privmsg message from fluentd out_ikachan: testing now"}, time)
       d.emit({'msg' => "privmsg message from fluentd out_ikachan: testing second line"}, time)
     end
+
+    assert_equal 2, @posted.length
+
+    assert_equal 'privmsg', @posted[0][:method]
+    assert_equal '#morischan', @posted[0][:channel]
+    assert_equal "out_ikachan: test [#{ts}] privmsg message from fluentd out_ikachan: testing now", @posted[0][:message]
+
+    assert_equal 'privmsg', @posted[1][:method]
+    assert_equal '#morischan', @posted[1][:channel]
+    assert_equal "out_ikachan: test [#{ts}] privmsg message from fluentd out_ikachan: testing second line", @posted[1][:message]
   end
 
   # setup / teardown for servers
@@ -115,14 +188,14 @@ class IkachanOutputTest < Test::Unit::TestCase
 
           req.path =~ /^\/(join|notice|privmsg)$/
           method = $1
-          post_param = Hash[*(req.body.split('&').map{|kv|kv.split('=')}.flatten)]
+          post_param = CGI.parse(req.body)
 
           if method == 'join'
             res.status = 200
             next
           end
 
-          @posted.push({ :method => method, :channel => post_param['channel'], :message => post_param['message'] })
+          @posted.push({ :method => method, :channel => post_param['channel'].first, :message => post_param['message'].first})
           res.status = 200
         }
         srv.start
