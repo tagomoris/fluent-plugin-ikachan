@@ -48,7 +48,7 @@ class Fluent::IkachanOutput < Fluent::Output
     if @time_key
       if @time_format
         f = @time_format
-        tf = Fluent::TimeFormatter.new(f, @localtime)
+        tf = Fluent::TimeFormatter.new(f, true) # IRC notification is formmatted as localtime only...
         @time_format_proc = tf.method(:format)
         @time_parse_proc = Proc.new {|str| Time.strptime(str, f).to_i }
       else
