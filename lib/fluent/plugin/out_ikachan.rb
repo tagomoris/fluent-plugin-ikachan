@@ -4,8 +4,10 @@ class Fluent::IkachanOutput < Fluent::Output
   config_param :host, :string
   config_param :port, :integer, :default => 4979
   config_param :channel, :string
-  config_param :message, :string
-  config_param :out_keys, :string
+  config_param :message, :string, :default => nil
+  config_param :out_keys, :string, :default => ""
+  config_param :privmsg_message, :string, :default => nil
+  config_param :privmsg_out_keys, :string, :default => ""
   config_param :time_key, :string, :default => nil
   config_param :time_format, :string, :default => nil
   config_param :tag_key, :string, :default => 'tag'
@@ -22,13 +24,25 @@ class Fluent::IkachanOutput < Fluent::Output
     @channel = '#' + @channel
     @join_uri = URI.parse "http://#{@host}:#{@port}/join"
     @notice_uri = URI.parse "http://#{@host}:#{@port}/notice"
+    @privmsg_uri = URI.parse "http://#{@host}:#{@port}/privmsg"
 
-    @out_keys = conf['out_keys'].split(',')
+    @out_keys = @out_keys.split(',')
+    @privmsg_out_keys = @privmsg_out_keys.split(',')
+
+    if @message.nil? and @privmsg_message.nil?
+      raise Fluent::ConfigError, "Either 'message' or 'privmsg_message' must be specifed."
+    end
 
     begin
-      @message % (['1'] * @out_keys.length)
+      @message % (['1'] * @out_keys.length) if @message
     rescue ArgumentError
       raise Fluent::ConfigError, "string specifier '%s' and out_keys specification mismatch"
+    end
+
+    begin
+      @privmsg_message % (['1'] * @privmsg_out_keys.length) if @privmsg_message
+    rescue ArgumentError
+      raise Fluent::ConfigError, "string specifier '%s' of privmsg_message and privmsg_out_keys specification mismatch"
     end
 
     if @time_key
@@ -60,22 +74,11 @@ class Fluent::IkachanOutput < Fluent::Output
 
   def emit(tag, es, chain)
     messages = []
+    privmsg_messages = []
 
     es.each {|time,record|
-      values = []
-      last = @out_keys.length - 1
-
-      values = @out_keys.map do |key|
-        case key
-        when @time_key
-          @time_format_proc.call(time)
-        when @tag_key
-          tag
-        else
-          record[key].to_s
-        end
-      end
-      messages.push (@message % values)
+      messages << evaluate_message(@message, @out_keys, tag, time, record) if @message
+      privmsg_messages << evaluate_message(@privmsg_message, @privmsg_out_keys, tag, time, record) if @privmsg_message
     }
 
     messages.each do |msg|
@@ -86,7 +89,35 @@ class Fluent::IkachanOutput < Fluent::Output
       end
     end
 
+    privmsg_messages.each do |msg|
+      begin
+        res = Net::HTTP.post_form(@privmsg_uri, {'channel' => @channel, 'message' => msg})
+      rescue
+        $log.warn "out_ikachan: failed to send privmsg to #{@host}:#{@port}, #{@channel}, message: #{msg}"
+      end
+    end
+
     chain.next
+  end
+
+  private
+
+  def evaluate_message(message, out_keys, tag, time, record)
+    values = []
+    last = out_keys.length - 1
+
+    values = out_keys.map do |key|
+      case key
+      when @time_key
+        @time_format_proc.call(time)
+      when @tag_key
+        tag
+      else
+        record[key].to_s
+      end
+    end
+
+    message % values
   end
 
 end

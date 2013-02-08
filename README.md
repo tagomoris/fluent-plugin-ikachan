@@ -30,12 +30,14 @@ And then, configure out_ikachan::
       channel morischan
       message notice: %s [%s] %s
       out_keys tag,time,msg
+      privmsg_message [%s] morischan :D
+      privmsg_out_keys time
       time_key time
       time_format %Y/%m/%d %H:%M:%S
       tag_key tag
     </match>
     
-You will got message like 'notice: alert.servicename [2012/05/10 18:51:59] alert message in attribute "msg"'.
+You will get a notice message like 'notice: alert.servicename [2012/05/10 18:51:59] alert message in attribute "msg"', and a privmsg message like '[2012/05/10 18:51:59] morischan :D'.
 
 ## TODO
 
