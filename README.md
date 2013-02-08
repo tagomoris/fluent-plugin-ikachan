@@ -30,14 +30,31 @@ And then, configure out_ikachan::
       channel morischan
       message notice: %s [%s] %s
       out_keys tag,time,msg
+      time_key time
+      time_format %Y/%m/%d %H:%M:%S
+      tag_key tag
+    </match>
+    
+You will get a notice message like `notice: alert.servicename [2012/05/10 18:51:59] alert message in attribute "msg"`.
+
+In addition to notice, out_ikachan can send privmsg into specified channel by `privmesg_message` and `privmsg_out_keys`.
+
+    <match alert.**>
+      # ikachan host/port(default 4979)
+      host localhost
+      port 4979
+      # channel to notify (this means #morischan)
+      channel morischan
+      message notice: %s [%s] %s
+      out_keys tag,time,msg
       privmsg_message [%s] morischan :D
       privmsg_out_keys time
       time_key time
       time_format %Y/%m/%d %H:%M:%S
       tag_key tag
     </match>
-    
-You will get a notice message like 'notice: alert.servicename [2012/05/10 18:51:59] alert message in attribute "msg"', and a privmsg message like '[2012/05/10 18:51:59] morischan :D'.
+
+At least one of (`message` + `out_keys`) or (`privmsg_message` + `privmsg_out_keys`) must be specified.
 
 ## TODO
 
@@ -46,7 +63,8 @@ You will get a notice message like 'notice: alert.servicename [2012/05/10 18:51:
 
 ## Copyright
 
-* Copyright
-  * Copyright (c) 2012- TAGOMORI Satoshi (tagomoris)
+* Copyright (c) 2012- TAGOMORI Satoshi (tagomoris)
+* Contributed by:
+  * @sonots
 * License
   * Apache License, Version 2.0
