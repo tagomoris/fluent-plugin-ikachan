@@ -83,7 +83,9 @@ class Fluent::IkachanOutput < Fluent::Output
 
     messages.each do |msg|
       begin
-        res = Net::HTTP.post_form(@notice_uri, {'channel' => @channel, 'message' => msg})
+        msg.split("\n").each do |m|
+          res = Net::HTTP.post_form(@notice_uri, {'channel' => @channel, 'message' => m})
+        end
       rescue
         $log.warn "out_ikachan: failed to send notice to #{@host}:#{@port}, #{@channel}, message: #{msg}"
       end
@@ -91,7 +93,9 @@ class Fluent::IkachanOutput < Fluent::Output
 
     privmsg_messages.each do |msg|
       begin
-        res = Net::HTTP.post_form(@privmsg_uri, {'channel' => @channel, 'message' => msg})
+        msg.split("\n").each do |m|
+          res = Net::HTTP.post_form(@privmsg_uri, {'channel' => @channel, 'message' => m})
+        end
       rescue
         $log.warn "out_ikachan: failed to send privmsg to #{@host}:#{@port}, #{@channel}, message: #{msg}"
       end
@@ -117,7 +121,7 @@ class Fluent::IkachanOutput < Fluent::Output
       end
     end
 
-    message % values
+    (message % values).gsub(/\\n/, "\n")
   end
 
 end
