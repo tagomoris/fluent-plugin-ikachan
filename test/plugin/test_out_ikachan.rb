@@ -36,6 +36,19 @@ class IkachanOutputTest < Test::Unit::TestCase
     tag_key tag
   ]
 
+  # Please notice that the line feed is "\n" in fluentd config file, not "\\n" as belows:
+  CONFIG_LINE_FEED = %[
+    host localhost
+    channel morischan
+    message out_ikachan: %s [%s] %s\\nRETURN
+    out_keys tag,time,msg
+    privmsg_message out_ikachan: %s [%s] %s\\nRETURN
+    privmsg_out_keys tag,time,msg
+    time_key time
+    time_format %Y/%m/%d %H:%M:%S
+    tag_key tag
+  ]
+
   def create_driver(conf=CONFIG,tag='test')
     Fluent::Test::OutputTestDriver.new(Fluent::IkachanOutput, tag).configure(conf)
   end
@@ -46,6 +59,8 @@ class IkachanOutputTest < Test::Unit::TestCase
     d = create_driver(CONFIG_NOTICE_ONLY)
     assert_equal '#morischan', d.instance.channel
     d = create_driver(CONFIG_PRIVMSG_ONLY)
+    assert_equal '#morischan', d.instance.channel
+    d = create_driver(CONFIG_LINE_FEED)
     assert_equal '#morischan', d.instance.channel
   end
 
@@ -146,6 +161,59 @@ class IkachanOutputTest < Test::Unit::TestCase
     assert_equal 'privmsg', @posted[1][:method]
     assert_equal '#morischan', @posted[1][:channel]
     assert_equal "out_ikachan: test [#{ts}] privmsg message from fluentd out_ikachan: testing second line", @posted[1][:message]
+  end
+
+  # CONFIG = %[
+  #   host localhost
+  #   channel morischan
+  #   message out_ikachan: %s [%s] %s\nRETURN
+  #   out_keys tag,time,msg
+  #   privmsg_message out_ikachan: %s [%s] %s\nRETURN
+  #   privmsg_out_keys tag,time,msg
+  #   time_key time
+  #   time_format %Y/%m/%d %H:%M:%S
+  #   tag_key tag
+  # ]
+  def test_line_feed
+    d = create_driver(CONFIG_LINE_FEED)
+    t = Time.now
+    time = t.to_i
+    ts = t.strftime(d.instance.time_format)
+    d.run do
+      d.emit({'msg' => "both notice and privmsg message from fluentd out_ikachan: testing now\ntesting second line"}, time)
+    end
+
+    assert_equal 6, @posted.length
+
+    i = 0
+    assert_equal 'notice', @posted[i][:method]
+    assert_equal '#morischan', @posted[i][:channel]
+    assert_equal "out_ikachan: test [#{ts}] both notice and privmsg message from fluentd out_ikachan: testing now", @posted[i][:message]
+
+    i += 1
+    assert_equal 'notice', @posted[i][:method]
+    assert_equal '#morischan', @posted[i][:channel]
+    assert_equal "testing second line", @posted[i][:message]
+
+    i += 1
+    assert_equal 'notice', @posted[i][:method]
+    assert_equal '#morischan', @posted[i][:channel]
+    assert_equal "RETURN", @posted[i][:message]
+
+    i += 1
+    assert_equal 'privmsg', @posted[i][:method]
+    assert_equal '#morischan', @posted[i][:channel]
+    assert_equal "out_ikachan: test [#{ts}] both notice and privmsg message from fluentd out_ikachan: testing now", @posted[i][:message]
+
+    i += 1
+    assert_equal 'privmsg', @posted[i][:method]
+    assert_equal '#morischan', @posted[i][:channel]
+    assert_equal "testing second line", @posted[i][:message]
+
+    i += 1
+    assert_equal 'privmsg', @posted[i][:method]
+    assert_equal '#morischan', @posted[i][:channel]
+    assert_equal "RETURN", @posted[i][:message]
   end
 
   # setup / teardown for servers
