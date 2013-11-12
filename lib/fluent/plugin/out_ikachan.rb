@@ -3,6 +3,8 @@ class Fluent::IkachanOutput < Fluent::Output
 
   config_param :host, :string
   config_param :port, :integer, :default => 4979
+  config_param :https, :bool, :default => false
+  config_param :mount, :string, :default => nil
   config_param :channel, :string
   config_param :message, :string, :default => nil
   config_param :out_keys, :string, :default => ""
@@ -14,18 +16,20 @@ class Fluent::IkachanOutput < Fluent::Output
 
   def initialize
     super
-    require 'net/http'
     require 'uri'
   end
 
   def configure(conf)
     super
 
-    @channel = '#' + @channel
-    @join_uri = URI.parse "http://#{@host}:#{@port}/join"
-    @notice_uri = URI.parse "http://#{@host}:#{@port}/notice"
-    @privmsg_uri = URI.parse "http://#{@host}:#{@port}/privmsg"
+    if @https
+      require 'net/https'
+    else
+      require 'net/http';
+    end
 
+    @mount = @mount ? "/#{@mount}" : ""
+    @channel = '#' + @channel
     @out_keys = @out_keys.split(',')
     @privmsg_out_keys = @privmsg_out_keys.split(',')
 
@@ -59,7 +63,7 @@ class Fluent::IkachanOutput < Fluent::Output
   end
 
   def start
-    res = Net::HTTP.post_form(@join_uri, {'channel' => @channel})
+    res = http_post("#{@mount}/join", :channel => @channel)
     if res.code.to_i == 200
       # ok
     elsif res.code.to_i == 403 and res.body == "joinned channel: #{@channel}"
@@ -84,7 +88,7 @@ class Fluent::IkachanOutput < Fluent::Output
     messages.each do |msg|
       begin
         msg.split("\n").each do |m|
-          res = Net::HTTP.post_form(@notice_uri, {'channel' => @channel, 'message' => m})
+          res = http_post("#{@mount}/notice", :channel => @channel, :message => m)
         end
       rescue
         $log.warn "out_ikachan: failed to send notice to #{@host}:#{@port}, #{@channel}, message: #{msg}"
@@ -94,7 +98,7 @@ class Fluent::IkachanOutput < Fluent::Output
     privmsg_messages.each do |msg|
       begin
         msg.split("\n").each do |m|
-          res = Net::HTTP.post_form(@privmsg_uri, {'channel' => @channel, 'message' => m})
+          res = http_post("#{@mount}/privmsg", :channel => @channel, :message => m)
         end
       rescue
         $log.warn "out_ikachan: failed to send privmsg to #{@host}:#{@port}, #{@channel}, message: #{msg}"
@@ -122,6 +126,17 @@ class Fluent::IkachanOutput < Fluent::Output
     end
 
     (message % values).gsub(/\\n/, "\n")
+  end
+
+  def http_post(path, args)
+    http = Net::HTTP.new(@host, @port)
+    if @https
+      http.use_ssl = true
+      http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    end
+    request = Net::HTTP::Post.new(path)
+    request.set_form_data(args)
+    http.request request
   end
 
 end

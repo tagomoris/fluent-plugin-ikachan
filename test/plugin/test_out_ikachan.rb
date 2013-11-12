@@ -49,6 +49,19 @@ class IkachanOutputTest < Test::Unit::TestCase
     tag_key tag
   ]
 
+  CONFIG_MOUNT = %[
+    host localhost
+    mount ikachan
+    channel morischan
+    message out_ikachan: %s [%s] %s
+    out_keys tag,time,msg
+    privmsg_message out_ikachan: %s [%s] %s
+    privmsg_out_keys tag,time,msg
+    time_key time
+    time_format %Y/%m/%d %H:%M:%S
+    tag_key tag
+  ]
+
   def create_driver(conf=CONFIG,tag='test')
     Fluent::Test::OutputTestDriver.new(Fluent::IkachanOutput, tag).configure(conf)
   end
@@ -76,6 +89,7 @@ class IkachanOutputTest < Test::Unit::TestCase
   #   tag_key tag
   # ]
   def test_notice_and_privmsg
+    create_dummy_server
     d = create_driver
     t = Time.now
     time = t.to_i
@@ -113,6 +127,7 @@ class IkachanOutputTest < Test::Unit::TestCase
   #   tag_key tag
   # ]
   def test_notice_only
+    create_dummy_server
     d = create_driver(CONFIG_NOTICE_ONLY)
     t = Time.now
     time = t.to_i
@@ -143,6 +158,7 @@ class IkachanOutputTest < Test::Unit::TestCase
   #   tag_key tag
   # ]
   def test_privmsg_only
+    create_dummy_server
     d = create_driver(CONFIG_PRIVMSG_ONLY)
     t = Time.now
     time = t.to_i
@@ -175,6 +191,7 @@ class IkachanOutputTest < Test::Unit::TestCase
   #   tag_key tag
   # ]
   def test_line_feed
+    create_dummy_server
     d = create_driver(CONFIG_LINE_FEED)
     t = Time.now
     time = t.to_i
@@ -217,8 +234,7 @@ class IkachanOutputTest < Test::Unit::TestCase
   end
 
   # setup / teardown for servers
-  def setup
-    Fluent::Test.setup
+  def create_dummy_server(mount='/')
     @posted = []
     @prohibited = 0
     @auth = false
@@ -230,7 +246,7 @@ class IkachanOutputTest < Test::Unit::TestCase
               WEBrick::HTTPServer.new({:BindAddress => '127.0.0.1', :Port => IKACHAN_TEST_LISTEN_PORT, :Logger => logger, :AccessLog => []})
             end
       begin
-        srv.mount_proc('/') { |req,res| # /join, /notice, /privmsg
+        srv.mount_proc(mount) { |req,res| # /join, /notice, /privmsg
           # POST /join?channel=#channel&channel_keyword=keyword
           # POST /notice?channel=#channel&message=your_message
           # POST /privmsg?channel=#channel&message=your_message
@@ -249,12 +265,13 @@ class IkachanOutputTest < Test::Unit::TestCase
             # ok, authorization not required
           end
 
-          if req.path == '/'
+          if req.path == mount
             res.status = 200
             next
           end
 
-          req.path =~ /^\/(join|notice|privmsg)$/
+          base_path = mount != '/' ? "#{mount}" : ""
+          req.path =~ /^#{base_path}\/(join|notice|privmsg)$/
           method = $1
           post_param = CGI.parse(req.body)
 
@@ -294,8 +311,12 @@ class IkachanOutputTest < Test::Unit::TestCase
       cv.wait(mutex)
     }
   end
+  def setup
+    Fluent::Test.setup
+  end
 
   def test_dummy_server
+    create_dummy_server
     d = create_driver
     host = d.instance.host
     port = d.instance.port
@@ -316,8 +337,36 @@ class IkachanOutputTest < Test::Unit::TestCase
     assert_equal 'NOW TESTING', @posted[0][:message]
   end
 
+  def test_mount
+    create_dummy_server('/ikachan')
+
+    d = create_driver(CONFIG_MOUNT)
+    host = d.instance.host
+    port = d.instance.port
+    client = Net::HTTP.start(host, port)
+
+    assert_equal '404', client.request_post('/', '').code
+    assert_equal '404', client.request_post('/join', 'channel=#test').code
+
+    assert_equal '200', client.request_post('/ikachan', '').code
+    assert_equal '200', client.request_post('/ikachan/join', 'channel=#test').code
+
+    assert_equal 0, @posted.size
+
+    assert_equal '200', client.request_post('/ikachan/notice', 'channel=#test&message=NOW TESTING').code
+    assert_equal '200', client.request_post('/ikachan/privmsg', 'channel=#test&message=NOW TESTING 2').code
+
+    assert_equal 2, @posted.size
+
+    assert_equal 'notice', @posted[0][:method]
+    assert_equal '#test', @posted[0][:channel]
+    assert_equal 'NOW TESTING', @posted[0][:message]
+  end
+
   def teardown
-    @dummy_server_thread.kill
-    @dummy_server_thread.join
+    if @dummy_server_thread
+      @dummy_server_thread.kill
+      @dummy_server_thread.join
+    end
   end
 end
