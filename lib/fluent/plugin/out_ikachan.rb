@@ -3,6 +3,7 @@ class Fluent::IkachanOutput < Fluent::Output
 
   config_param :host, :string
   config_param :port, :integer, :default => 4979
+  config_param :mount, :string, :default => ""
   config_param :channel, :string
   config_param :message, :string, :default => nil
   config_param :out_keys, :string, :default => ""
@@ -21,10 +22,15 @@ class Fluent::IkachanOutput < Fluent::Output
   def configure(conf)
     super
 
+    if @mount == "/"
+      raise Fluent::ConfigError, "mount should not '/'"
+    end
+
     @channel = '#' + @channel
-    @join_uri = URI.parse "http://#{@host}:#{@port}/join"
-    @notice_uri = URI.parse "http://#{@host}:#{@port}/notice"
-    @privmsg_uri = URI.parse "http://#{@host}:#{@port}/privmsg"
+
+    @join_uri = URI.join("http://#{@host}:#{@port}", "#{@mount}/join")
+    @notice_uri = URI.join("http://#{@host}:#{@port}", "#{@mount}/notice")
+    @privmsg_uri = URI.join("http://#{@host}:#{@port}", "#{@mount}/privmsg")
 
     @out_keys = @out_keys.split(',')
     @privmsg_out_keys = @privmsg_out_keys.split(',')
