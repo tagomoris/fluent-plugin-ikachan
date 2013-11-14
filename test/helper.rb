@@ -50,3 +50,9 @@ def get_content(server, port, path, headers={})
     http.get(path, headers).body
   }
 end
+
+def with_base_path(path)
+  @mount = path
+  yield if block_given?
+  @mount = '/'
+end

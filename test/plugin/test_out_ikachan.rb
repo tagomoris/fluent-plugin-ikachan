@@ -266,26 +266,26 @@ class IkachanOutputTest < Test::Unit::TestCase
   #   tag_key tag
   # ]
   def test_base_uri
-    d = create_driver(CONFIG_BASE_URI)
-    @mount = "/ikachan/"
+    with_base_path('/ikachan/') do
+      d = create_driver(CONFIG_BASE_URI)
+      t = Time.now
+      time = t.to_i
+      ts = t.strftime(d.instance.time_format)
+      d.run do
+        d.emit({'msg' => "notice message from fluentd out_ikachan: testing now"}, time)
+        d.emit({'msg' => "notice message from fluentd out_ikachan: testing second line"}, time)
+      end
 
-    t = Time.now
-    time = t.to_i
-    ts = t.strftime(d.instance.time_format)
-    d.run do
-      d.emit({'msg' => "notice message from fluentd out_ikachan: testing now"}, time)
-      d.emit({'msg' => "notice message from fluentd out_ikachan: testing second line"}, time)
+      assert_equal 2, @posted.length
+
+      assert_equal 'notice', @posted[0][:method]
+      assert_equal '#morischan', @posted[0][:channel]
+      assert_equal "out_ikachan: test [#{ts}] notice message from fluentd out_ikachan: testing now", @posted[0][:message]
+
+      assert_equal 'notice', @posted[1][:method]
+      assert_equal '#morischan', @posted[1][:channel]
+      assert_equal "out_ikachan: test [#{ts}] notice message from fluentd out_ikachan: testing second line", @posted[1][:message]
     end
-
-    assert_equal 2, @posted.length
-
-    assert_equal 'notice', @posted[0][:method]
-    assert_equal '#morischan', @posted[0][:channel]
-    assert_equal "out_ikachan: test [#{ts}] notice message from fluentd out_ikachan: testing now", @posted[0][:message]
-
-    assert_equal 'notice', @posted[1][:method]
-    assert_equal '#morischan', @posted[1][:channel]
-    assert_equal "out_ikachan: test [#{ts}] notice message from fluentd out_ikachan: testing second line", @posted[1][:message]
   end
 
   # setup / teardown for servers
