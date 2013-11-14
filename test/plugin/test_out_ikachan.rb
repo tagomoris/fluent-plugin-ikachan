@@ -50,9 +50,7 @@ class IkachanOutputTest < Test::Unit::TestCase
     tag_key tag
   ]
 
-  CONFIG_INVALID_MOUNT = %[
-    host localhost
-    mount /
+  CONFIG_HOST_NIL = %[
     channel morischan
     message out_ikachan: %s [%s] %s
     out_keys tag,time,msg
@@ -61,9 +59,18 @@ class IkachanOutputTest < Test::Unit::TestCase
     tag_key tag
   ]
 
-  CONFIG_MOUNT = %[
-    host localhost
-    mount ikachan
+  CONFIG_INVALID_BASE_URI = %[
+    base_uri http://localhost:4979/ikachan
+    channel morischan
+    message out_ikachan: %s [%s] %s
+    out_keys tag,time,msg
+    time_key time
+    time_format %Y/%m/%d %H:%M:%S
+    tag_key tag
+  ]
+
+  CONFIG_BASE_URI = %[
+    base_uri http://localhost:4979/ikachan/
     channel morischan
     message out_ikachan: %s [%s] %s
     out_keys tag,time,msg
@@ -79,6 +86,7 @@ class IkachanOutputTest < Test::Unit::TestCase
   def test_configure
     d = create_driver
     assert_equal '#morischan', d.instance.channel
+    assert_equal 'http://localhost:4979/', d.instance.base_uri
     d = create_driver(CONFIG_NOTICE_ONLY)
     assert_equal '#morischan', d.instance.channel
     d = create_driver(CONFIG_PRIVMSG_ONLY)
@@ -86,10 +94,14 @@ class IkachanOutputTest < Test::Unit::TestCase
     d = create_driver(CONFIG_LINE_FEED)
     assert_equal '#morischan', d.instance.channel
     assert_raise Fluent::ConfigError do
-      create_driver(CONFIG_INVALID_MOUNT)
+      create_driver(CONFIG_HOST_NIL)
     end
-    d = create_driver(CONFIG_MOUNT)
+    assert_raise Fluent::ConfigError do
+      create_driver(CONFIG_INVALID_BASE_URI)
+    end
+    d = create_driver(CONFIG_BASE_URI)
     assert_equal '#morischan', d.instance.channel
+    assert_equal 'http://localhost:4979/ikachan/', d.instance.base_uri
   end
 
   # CONFIG = %[
@@ -244,9 +256,8 @@ class IkachanOutputTest < Test::Unit::TestCase
     assert_equal "RETURN", @posted[i][:message]
   end
 
-  # CONFIG_MOUNT = %[
-  #   host localhost
-  #   mount ikachan
+  # CONFIG_BASE_URI = %[
+  #   base_uri http://localhost:4979/ikachan/
   #   channel morischan
   #   message out_ikachan: %s [%s] %s
   #   out_keys tag,time,msg
@@ -254,8 +265,8 @@ class IkachanOutputTest < Test::Unit::TestCase
   #   time_format %Y/%m/%d %H:%M:%S
   #   tag_key tag
   # ]
-  def test_mount
-    d = create_driver(CONFIG_MOUNT)
+  def test_base_uri
+    d = create_driver(CONFIG_BASE_URI)
     @mount = "/ikachan/"
 
     t = Time.now
