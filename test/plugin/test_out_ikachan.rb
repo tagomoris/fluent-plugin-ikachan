@@ -79,6 +79,18 @@ class IkachanOutputTest < Test::Unit::TestCase
     tag_key tag
   ]
 
+  CONFIG_SSL = %[
+    host localhost
+    ssl true
+    verify_ssl false
+    channel morischan
+    message out_ikachan: %s [%s] %s
+    out_keys tag,time,msg
+    time_key time
+    time_format %Y/%m/%d %H:%M:%S
+    tag_key tag
+  ]
+
   def create_driver(conf=CONFIG,tag='test')
     Fluent::Test::OutputTestDriver.new(Fluent::IkachanOutput, tag).configure(conf)
   end
@@ -102,6 +114,8 @@ class IkachanOutputTest < Test::Unit::TestCase
     d = create_driver(CONFIG_BASE_URI)
     assert_equal '#morischan', d.instance.channel
     assert_equal 'http://localhost:4979/ikachan/', d.instance.base_uri
+    d = create_driver(CONFIG_SSL)
+    assert_equal '#morischan', d.instance.channel
   end
 
   # CONFIG = %[
