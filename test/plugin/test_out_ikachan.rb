@@ -1,5 +1,6 @@
 require 'helper'
 require 'cgi'
+require 'uri'
 
 class IkachanOutputTest < Test::Unit::TestCase
   IKACHAN_TEST_LISTEN_PORT = 4979
@@ -49,6 +50,35 @@ class IkachanOutputTest < Test::Unit::TestCase
     tag_key tag
   ]
 
+  CONFIG_HOST_NIL = %[
+    channel morischan
+    message out_ikachan: %s [%s] %s
+    out_keys tag,time,msg
+    time_key time
+    time_format %Y/%m/%d %H:%M:%S
+    tag_key tag
+  ]
+
+  CONFIG_INVALID_BASE_URI = %[
+    base_uri http://localhost:4979/ikachan
+    channel morischan
+    message out_ikachan: %s [%s] %s
+    out_keys tag,time,msg
+    time_key time
+    time_format %Y/%m/%d %H:%M:%S
+    tag_key tag
+  ]
+
+  CONFIG_BASE_URI = %[
+    base_uri http://localhost:4979/ikachan/
+    channel morischan
+    message out_ikachan: %s [%s] %s
+    out_keys tag,time,msg
+    time_key time
+    time_format %Y/%m/%d %H:%M:%S
+    tag_key tag
+  ]
+
   def create_driver(conf=CONFIG,tag='test')
     Fluent::Test::OutputTestDriver.new(Fluent::IkachanOutput, tag).configure(conf)
   end
@@ -56,12 +86,22 @@ class IkachanOutputTest < Test::Unit::TestCase
   def test_configure
     d = create_driver
     assert_equal '#morischan', d.instance.channel
+    assert_equal 'http://localhost:4979/', d.instance.base_uri
     d = create_driver(CONFIG_NOTICE_ONLY)
     assert_equal '#morischan', d.instance.channel
     d = create_driver(CONFIG_PRIVMSG_ONLY)
     assert_equal '#morischan', d.instance.channel
     d = create_driver(CONFIG_LINE_FEED)
     assert_equal '#morischan', d.instance.channel
+    assert_raise Fluent::ConfigError do
+      create_driver(CONFIG_HOST_NIL)
+    end
+    assert_raise Fluent::ConfigError do
+      create_driver(CONFIG_INVALID_BASE_URI)
+    end
+    d = create_driver(CONFIG_BASE_URI)
+    assert_equal '#morischan', d.instance.channel
+    assert_equal 'http://localhost:4979/ikachan/', d.instance.base_uri
   end
 
   # CONFIG = %[
@@ -216,12 +256,45 @@ class IkachanOutputTest < Test::Unit::TestCase
     assert_equal "RETURN", @posted[i][:message]
   end
 
+  # CONFIG_BASE_URI = %[
+  #   base_uri http://localhost:4979/ikachan/
+  #   channel morischan
+  #   message out_ikachan: %s [%s] %s
+  #   out_keys tag,time,msg
+  #   time_key time
+  #   time_format %Y/%m/%d %H:%M:%S
+  #   tag_key tag
+  # ]
+  def test_base_uri
+    with_base_path('/ikachan/') do
+      d = create_driver(CONFIG_BASE_URI)
+      t = Time.now
+      time = t.to_i
+      ts = t.strftime(d.instance.time_format)
+      d.run do
+        d.emit({'msg' => "notice message from fluentd out_ikachan: testing now"}, time)
+        d.emit({'msg' => "notice message from fluentd out_ikachan: testing second line"}, time)
+      end
+
+      assert_equal 2, @posted.length
+
+      assert_equal 'notice', @posted[0][:method]
+      assert_equal '#morischan', @posted[0][:channel]
+      assert_equal "out_ikachan: test [#{ts}] notice message from fluentd out_ikachan: testing now", @posted[0][:message]
+
+      assert_equal 'notice', @posted[1][:method]
+      assert_equal '#morischan', @posted[1][:channel]
+      assert_equal "out_ikachan: test [#{ts}] notice message from fluentd out_ikachan: testing second line", @posted[1][:message]
+    end
+  end
+
   # setup / teardown for servers
   def setup
     Fluent::Test.setup
     @posted = []
     @prohibited = 0
     @auth = false
+    @mount = '/' # @mount 's first and last char should be '/'. it is for dummy server path handling
     @dummy_server_thread = Thread.new do
       srv = if ENV['VERBOSE']
               WEBrick::HTTPServer.new({:BindAddress => '127.0.0.1', :Port => IKACHAN_TEST_LISTEN_PORT})
@@ -231,6 +304,11 @@ class IkachanOutputTest < Test::Unit::TestCase
             end
       begin
         srv.mount_proc('/') { |req,res| # /join, /notice, /privmsg
+          # setup called before each test method. so @mount can not use for mount_proc.
+          unless req.path =~ /^#{@mount}/
+            res.status = 404
+            next
+          end
           # POST /join?channel=#channel&channel_keyword=keyword
           # POST /notice?channel=#channel&message=your_message
           # POST /privmsg?channel=#channel&message=your_message
@@ -249,12 +327,16 @@ class IkachanOutputTest < Test::Unit::TestCase
             # ok, authorization not required
           end
 
-          if req.path == '/'
+          if req.path == @mount
             res.status = 200
             next
           end
 
-          req.path =~ /^\/(join|notice|privmsg)$/
+          unless req.path =~ /^#{@mount}(join|notice|privmsg)$/
+            res.status = 404
+            next
+          end
+
           method = $1
           post_param = CGI.parse(req.body)
 
@@ -314,6 +396,14 @@ class IkachanOutputTest < Test::Unit::TestCase
     assert_equal 'notice', @posted[0][:method]
     assert_equal '#test', @posted[0][:channel]
     assert_equal 'NOW TESTING', @posted[0][:message]
+
+    @mount = '/ikachan/'
+    assert_equal '404', client.request_post('/', '').code
+    assert_equal '404', client.request_post('/join', 'channel=#test').code
+
+    assert_equal '200', client.request_post('/ikachan/', '').code
+    assert_equal '404', client.request_post('/ikachan/test', 'channel=#test').code
+    assert_equal '200', client.request_post('/ikachan/join', 'channel=#test').code
   end
 
   def teardown

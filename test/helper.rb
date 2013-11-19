@@ -50,3 +50,9 @@ def get_content(server, port, path, headers={})
     http.get(path, headers).body
   }
 end
+
+def with_base_path(path)
+  prev_mount,@mount = @mount,path
+  yield
+  @mount = prev_mount
+end
