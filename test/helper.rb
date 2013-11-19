@@ -52,7 +52,7 @@ def get_content(server, port, path, headers={})
 end
 
 def with_base_path(path)
-  @mount = path
-  yield if block_given?
-  @mount = '/'
+  prev_mount,@mount = @mount,path
+  yield
+  @mount = prev_mount
 end
