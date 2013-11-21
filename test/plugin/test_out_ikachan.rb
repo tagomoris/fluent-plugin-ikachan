@@ -79,10 +79,44 @@ class IkachanOutputTest < Test::Unit::TestCase
     tag_key tag
   ]
 
-  CONFIG_SSL = %[
+  CONFIG_BASIC_SSL = %[
     host localhost
     ssl true
     verify_ssl false
+    channel morischan
+    message out_ikachan: %s [%s] %s
+    out_keys tag,time,msg
+    time_key time
+    time_format %Y/%m/%d %H:%M:%S
+    tag_key tag
+  ]
+
+  # base_uri starts with http, but ssl option is true
+  CONFIG_INVALID_SSL_1 = %[
+    base_uri http://localhost/
+    ssl true
+    channel morischan
+    message out_ikachan: %s [%s] %s
+    out_keys tag,time,msg
+    time_key time
+    time_format %Y/%m/%d %H:%M:%S
+    tag_key tag
+  ]
+
+  # base_uri starts with https, but ssl option is false
+  CONFIG_INVALID_SSL_2 = %[
+    base_uri https://localhost/
+    ssl false
+    channel morischan
+    message out_ikachan: %s [%s] %s
+    out_keys tag,time,msg
+    time_key time
+    time_format %Y/%m/%d %H:%M:%S
+    tag_key tag
+  ]
+
+  CONFIG_AUTO_ENABLE_SSL = %[
+    base_uri https://localhost/
     channel morischan
     message out_ikachan: %s [%s] %s
     out_keys tag,time,msg
@@ -99,6 +133,7 @@ class IkachanOutputTest < Test::Unit::TestCase
     d = create_driver
     assert_equal '#morischan', d.instance.channel
     assert_equal 'http://localhost:4979/', d.instance.base_uri
+    assert_equal false, d.instance.ssl
     d = create_driver(CONFIG_NOTICE_ONLY)
     assert_equal '#morischan', d.instance.channel
     d = create_driver(CONFIG_PRIVMSG_ONLY)
@@ -114,8 +149,17 @@ class IkachanOutputTest < Test::Unit::TestCase
     d = create_driver(CONFIG_BASE_URI)
     assert_equal '#morischan', d.instance.channel
     assert_equal 'http://localhost:4979/ikachan/', d.instance.base_uri
-    d = create_driver(CONFIG_SSL)
+    d = create_driver(CONFIG_BASIC_SSL)
     assert_equal '#morischan', d.instance.channel
+    assert_raise Fluent::ConfigError do
+      create_driver(CONFIG_INVALID_SSL_1)
+    end
+    assert_raise Fluent::ConfigError do
+      create_driver(CONFIG_INVALID_SSL_2)
+    end
+    d = create_driver(CONFIG_AUTO_ENABLE_SSL)
+    assert_equal '#morischan', d.instance.channel
+    assert_equal true, d.instance.ssl
   end
 
   # CONFIG = %[

@@ -4,7 +4,7 @@ class Fluent::IkachanOutput < Fluent::Output
   config_param :host, :string, :default => nil
   config_param :port, :integer, :default => 4979
   config_param :base_uri, :string, :default => nil
-  config_param :ssl, :bool, :default => false
+  config_param :ssl, :bool, :default => nil
   config_param :verify_ssl, :bool, :default => false
   config_param :channel, :string
   config_param :message, :string, :default => nil
@@ -28,11 +28,22 @@ class Fluent::IkachanOutput < Fluent::Output
       if @host.nil? or @port.nil?
         raise Fluent::ConfigError, 'If `base_uri is nil, both `host` and `port` must be specifed'
       end
-      @base_uri = "http://#{@host}:#{@port}/"
+      # if only specifed "ssl true", scheme is https
+      scheme = @ssl == true ? "https" : "http"
+      @base_uri = "#{scheme}://#{@host}:#{@port}/"
     end
 
     unless @base_uri =~ /\/$/
       raise Fluent::ConfigError, '`base_uri` must be end `/`'
+    end
+
+    # auto enable ssl option by base_uri scheme if ssl is not specifed
+    if @ssl.nil?
+      @ssl = @base_uri =~ /^https:/ ? true : false
+    end
+
+    if ( @base_uri =~ /^https:/ and @ssl == false ) || ( @base_uri =~ /^http:/ and @ssl == true )
+      raise Fluent::ConfigError, 'conflict `base_uri` scheme and `ssl`'
     end
 
     @channel = '#' + @channel
