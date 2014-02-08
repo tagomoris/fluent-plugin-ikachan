@@ -4,7 +4,7 @@
 
 ### IkachanOutput
 
-Plugin to send message to IRC, over IRC-HTTP bridge 'Ikachan' by yappo.
+[Fluentd](http://fluentd.org) plugin to send message to IRC, over IRC-HTTP bridge 'Ikachan' by yappo.
 
 About Ikachan:
  * https://metacpan.org/module/ikachan
