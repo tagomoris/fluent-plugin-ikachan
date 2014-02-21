@@ -1,6 +1,11 @@
 class Fluent::IkachanOutput < Fluent::Output
   Fluent::Plugin.register_output('ikachan', self)
 
+  # Define `log` method for v0.10.42 or earlier
+  unless method_defined?(:log)
+    define_method("log") { $log }
+  end
+
   config_param :host, :string, :default => nil
   config_param :port, :integer, :default => 4979
   config_param :base_uri, :string, :default => nil
@@ -113,7 +118,7 @@ class Fluent::IkachanOutput < Fluent::Output
           res = http_post_request(@notice_uri, {'channel' => @channel, 'message' => m})
         end
       rescue
-        $log.warn "out_ikachan: failed to send notice to #{@host}:#{@port}, #{@channel}, message: #{msg}"
+        log.warn "out_ikachan: failed to send notice to #{@host}:#{@port}, #{@channel}, message: #{msg}"
       end
     end
 
@@ -123,7 +128,7 @@ class Fluent::IkachanOutput < Fluent::Output
           res = http_post_request(@privmsg_uri, {'channel' => @channel, 'message' => m})
         end
       rescue
-        $log.warn "out_ikachan: failed to send privmsg to #{@host}:#{@port}, #{@channel}, message: #{msg}"
+        log.warn "out_ikachan: failed to send privmsg to #{@host}:#{@port}, #{@channel}, message: #{msg}"
       end
     end
 
