@@ -19,6 +19,7 @@ class Fluent::IkachanOutput < Fluent::Output
   config_param :time_key, :string, :default => nil
   config_param :time_format, :string, :default => nil
   config_param :tag_key, :string, :default => 'tag'
+  config_param :post_per_line, :bool, :default => true
 
   def initialize
     super
@@ -104,31 +105,29 @@ class Fluent::IkachanOutput < Fluent::Output
   end
 
   def emit(tag, es, chain)
-    messages = []
-    privmsg_messages = []
+    posts = []
 
-    es.each {|time,record|
-      messages << evaluate_message(@message, @out_keys, tag, time, record) if @message
-      privmsg_messages << evaluate_message(@privmsg_message, @privmsg_out_keys, tag, time, record) if @privmsg_message
-    }
-
-    messages.each do |msg|
-      begin
-        msg.split("\n").each do |m|
-          res = http_post_request(@notice_uri, {'channel' => @channel, 'message' => m})
-        end
-      rescue
-        log.warn "out_ikachan: failed to send notice to #{@host}:#{@port}, #{@channel}, message: #{msg}"
+    es.each do |time,record|
+      if @message
+        posts << [:notice, evaluate_message(@message, @out_keys, tag, time, record)]
+      end
+      if @privmsg_message
+        posts << [:privmsg, evaluate_message(@privmsg_message, @privmsg_out_keys, tag, time, record)]
       end
     end
 
-    privmsg_messages.each do |msg|
+    posts.each do |type, msg|
+      uri = (type == :privmsg ? @privmsg_uri : @notice_uri)
       begin
-        msg.split("\n").each do |m|
-          res = http_post_request(@privmsg_uri, {'channel' => @channel, 'message' => m})
+        if @post_per_line
+          msg.split("\n").each do |m|
+            res = http_post_request(uri, {'channel' => @channel, 'message' => m})
+          end
+        else
+          res = http_post_request(uri, {'channel' => @channel, 'message' => msg})
         end
       rescue
-        log.warn "out_ikachan: failed to send privmsg to #{@host}:#{@port}, #{@channel}, message: #{msg}"
+        log.warn "out_ikachan: failed to send notice to #{@host}:#{@port}, #{@channel}, message: #{msg}"
       end
     end
 

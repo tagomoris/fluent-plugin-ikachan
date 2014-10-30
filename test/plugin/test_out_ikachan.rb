@@ -50,6 +50,19 @@ class IkachanOutputTest < Test::Unit::TestCase
     tag_key tag
   ]
 
+  CONFIG_POST_PER_LINE_FALSE = %[
+    host localhost
+    channel morischan
+    message out_ikachan: %s [%s] %s\\nRETURN
+    out_keys tag,time,msg
+    privmsg_message out_ikachan: %s [%s] %s\\nRETURN
+    privmsg_out_keys tag,time,msg
+    time_key time
+    time_format %Y/%m/%d %H:%M:%S
+    tag_key tag
+    post_per_line false
+  ]
+
   CONFIG_HOST_NIL = %[
     channel morischan
     message out_ikachan: %s [%s] %s
@@ -139,6 +152,8 @@ class IkachanOutputTest < Test::Unit::TestCase
     d = create_driver(CONFIG_PRIVMSG_ONLY)
     assert_equal '#morischan', d.instance.channel
     d = create_driver(CONFIG_LINE_FEED)
+    assert_equal '#morischan', d.instance.channel
+    d = create_driver(CONFIG_POST_PER_LINE_FALSE)
     assert_equal '#morischan', d.instance.channel
     assert_raise Fluent::ConfigError do
       create_driver(CONFIG_HOST_NIL)
@@ -312,6 +327,40 @@ class IkachanOutputTest < Test::Unit::TestCase
     assert_equal 'privmsg', @posted[i][:method]
     assert_equal '#morischan', @posted[i][:channel]
     assert_equal "RETURN", @posted[i][:message]
+  end
+
+  # CONFIG_POST_PER_LINE_FALSE = %[
+  #   host localhost
+  #   channel morischan
+  #   message out_ikachan: %s [%s] %s\\nRETURN
+  #   out_keys tag,time,msg
+  #   privmsg_message out_ikachan: %s [%s] %s\\nRETURN
+  #   privmsg_out_keys tag,time,msg
+  #   time_key time
+  #   time_format %Y/%m/%d %H:%M:%S
+  #   tag_key tag
+  #   post_per_line false
+  # ]
+  def test_post_per_line_false
+    d = create_driver(CONFIG_POST_PER_LINE_FALSE)
+    t = Time.now
+    time = t.to_i
+    ts = t.strftime(d.instance.time_format)
+    d.run do
+      d.emit({'msg' => "both notice and privmsg message from fluentd out_ikachan: testing now\ntesting second line"}, time)
+    end
+
+    assert_equal 2, @posted.length
+
+    i = 0
+    assert_equal 'notice', @posted[i][:method]
+    assert_equal '#morischan', @posted[i][:channel]
+    assert_equal "out_ikachan: test [#{ts}] both notice and privmsg message from fluentd out_ikachan: testing now\ntesting second line\nRETURN", @posted[i][:message]
+
+    i += 1
+    assert_equal 'privmsg', @posted[i][:method]
+    assert_equal '#morischan', @posted[i][:channel]
+    assert_equal "out_ikachan: test [#{ts}] both notice and privmsg message from fluentd out_ikachan: testing now\ntesting second line\nRETURN", @posted[i][:message]
   end
 
   # CONFIG_BASE_URI = %[
