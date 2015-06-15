@@ -92,9 +92,9 @@ class Fluent::IkachanOutput < Fluent::Output
 
   def start
     res = http_post_request(@join_uri, {'channel' => @channel})
-    if res.kind_of?(Net::HTTPSuccess)
+    if res.is_a?(Net::HTTPSuccess)
       # ok
-    elsif res.kind_of?(Net::HTTPForbidden) and res.body == "joinned channel: #{@channel}"
+    elsif res.is_a?(Net::HTTPForbidden) and res.body == "joinned channel: #{@channel}"
       # ok
     else
       raise Fluent::ConfigError, "failed to connect ikachan server #{@host}:#{@port}"
