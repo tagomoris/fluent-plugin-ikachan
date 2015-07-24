@@ -7,7 +7,7 @@ Gem::Specification.new do |gem|
   gem.summary       = %q{output plugin for IRC-HTTP gateway 'ikachan'}
   gem.description   = %q{output plugin for IRC-HTTP gateway 'ikachan' (see: https://metacpan.org/module/ikachan and (jpn) http://blog.yappo.jp/yappo/archives/000760.html)}
   gem.homepage      = "https://github.com/tagomoris/fluent-plugin-ikachan"
-  gem.license       = "APLv2"
+  gem.license       = "Apache-2.0"
 
   gem.files         = `git ls-files`.split($\)
   gem.executables   = gem.files.grep(%r{^bin/}).map{ |f| File.basename(f) }
