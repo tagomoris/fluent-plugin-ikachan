@@ -1,8 +1,12 @@
 require 'helper'
+require 'fluent/test/driver/output'
+require 'fluent/test/helpers'
 require 'cgi'
 require 'uri'
 
 class IkachanOutputTest < Test::Unit::TestCase
+  include Fluent::Test::Helpers
+
   IKACHAN_TEST_LISTEN_PORT = 4979
 
   CONFIG = %[
@@ -138,8 +142,8 @@ class IkachanOutputTest < Test::Unit::TestCase
     tag_key tag
   ]
 
-  def create_driver(conf=CONFIG,tag='test')
-    Fluent::Test::OutputTestDriver.new(Fluent::IkachanOutput, tag).configure(conf)
+  def create_driver(conf=CONFIG)
+    Fluent::Test::Driver::Output.new(Fluent::Plugin::IkachanOutput).configure(conf)
   end
 
   def test_configure
@@ -190,12 +194,11 @@ class IkachanOutputTest < Test::Unit::TestCase
   # ]
   def test_notice_and_privmsg
     d = create_driver
-    t = Time.now
-    time = t.to_i
-    ts = t.strftime(d.instance.time_format)
-    d.run do
-      d.emit({'msg' => "both notice and privmsg message from fluentd out_ikachan: testing now"}, time)
-      d.emit({'msg' => "both notice and privmsg message from fluentd out_ikachan: testing second line"}, time)
+    time = event_time
+    ts = Time.at(time.to_r).strftime(d.instance.time_format)
+    d.run(default_tag: 'test') do
+      d.feed(time, {'msg' => "both notice and privmsg message from fluentd out_ikachan: testing now"})
+      d.feed(time, {'msg' => "both notice and privmsg message from fluentd out_ikachan: testing second line"})
     end
 
     assert_equal 4, @posted.length
@@ -227,12 +230,11 @@ class IkachanOutputTest < Test::Unit::TestCase
   # ]
   def test_notice_only
     d = create_driver(CONFIG_NOTICE_ONLY)
-    t = Time.now
-    time = t.to_i
-    ts = t.strftime(d.instance.time_format)
-    d.run do
-      d.emit({'msg' => "notice message from fluentd out_ikachan: testing now"}, time)
-      d.emit({'msg' => "notice message from fluentd out_ikachan: testing second line"}, time)
+    time = event_time
+    ts = Time.at(time.to_r).strftime(d.instance.time_format)
+    d.run(default_tag: 'test') do
+      d.feed(time, {'msg' => "notice message from fluentd out_ikachan: testing now"})
+      d.feed(time, {'msg' => "notice message from fluentd out_ikachan: testing second line"})
     end
 
     assert_equal 2, @posted.length
@@ -257,12 +259,11 @@ class IkachanOutputTest < Test::Unit::TestCase
   # ]
   def test_privmsg_only
     d = create_driver(CONFIG_PRIVMSG_ONLY)
-    t = Time.now
-    time = t.to_i
-    ts = t.strftime(d.instance.time_format)
-    d.run do
-      d.emit({'msg' => "privmsg message from fluentd out_ikachan: testing now"}, time)
-      d.emit({'msg' => "privmsg message from fluentd out_ikachan: testing second line"}, time)
+    time = event_time
+    ts = Time.at(time.to_r).strftime(d.instance.time_format)
+    d.run(default_tag: 'test') do
+      d.feed({'msg' => "privmsg message from fluentd out_ikachan: testing now"})
+      d.feed({'msg' => "privmsg message from fluentd out_ikachan: testing second line"})
     end
 
     assert_equal 2, @posted.length
@@ -289,11 +290,10 @@ class IkachanOutputTest < Test::Unit::TestCase
   # ]
   def test_line_feed
     d = create_driver(CONFIG_LINE_FEED)
-    t = Time.now
-    time = t.to_i
-    ts = t.strftime(d.instance.time_format)
-    d.run do
-      d.emit({'msg' => "both notice and privmsg message from fluentd out_ikachan: testing now\ntesting second line"}, time)
+    time = event_time
+    ts = Time.at(time.to_r).strftime(d.instance.time_format)
+    d.run(default_tag: 'test') do
+      d.feed(time, {'msg' => "both notice and privmsg message from fluentd out_ikachan: testing now\ntesting second line"})
     end
 
     assert_equal 6, @posted.length
@@ -343,11 +343,10 @@ class IkachanOutputTest < Test::Unit::TestCase
   # ]
   def test_post_per_line_false
     d = create_driver(CONFIG_POST_PER_LINE_FALSE)
-    t = Time.now
-    time = t.to_i
-    ts = t.strftime(d.instance.time_format)
-    d.run do
-      d.emit({'msg' => "both notice and privmsg message from fluentd out_ikachan: testing now\ntesting second line"}, time)
+    time = event_time
+    ts = Time.at(time.to_r).strftime(d.instance.time_format)
+    d.run(default_tag: 'test') do
+      d.feed(time, {'msg' => "both notice and privmsg message from fluentd out_ikachan: testing now\ntesting second line"})
     end
 
     assert_equal 2, @posted.length
@@ -375,12 +374,11 @@ class IkachanOutputTest < Test::Unit::TestCase
   def test_base_uri
     with_base_path('/ikachan/') do
       d = create_driver(CONFIG_BASE_URI)
-      t = Time.now
-      time = t.to_i
-      ts = t.strftime(d.instance.time_format)
-      d.run do
-        d.emit({'msg' => "notice message from fluentd out_ikachan: testing now"}, time)
-        d.emit({'msg' => "notice message from fluentd out_ikachan: testing second line"}, time)
+      time = event_time
+      ts = Time.at(time.to_r).strftime(d.instance.time_format)
+      d.run(default_tag: 'test') do
+        d.feed(time, {'msg' => "notice message from fluentd out_ikachan: testing now"})
+        d.feed(time, {'msg' => "notice message from fluentd out_ikachan: testing second line"})
       end
 
       assert_equal 2, @posted.length

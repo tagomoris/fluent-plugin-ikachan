@@ -1,4 +1,6 @@
-class Fluent::IkachanOutput < Fluent::Output
+require 'fluent/plugin/output'
+
+class Fluent::Plugin::IkachanOutput < Fluent::Plugin::Output
   Fluent::Plugin.register_output('ikachan', self)
 
   # Define `log` method for v0.10.42 or earlier
@@ -91,6 +93,7 @@ class Fluent::IkachanOutput < Fluent::Output
   end
 
   def start
+    super
     res = http_post_request(@join_uri, {'channel' => @channel})
     if res.is_a?(Net::HTTPSuccess)
       # ok
@@ -102,9 +105,10 @@ class Fluent::IkachanOutput < Fluent::Output
   end
 
   def shutdown
+    super
   end
 
-  def emit(tag, es, chain)
+  def process(tag, es)
     posts = []
 
     es.each do |time,record|
@@ -130,8 +134,6 @@ class Fluent::IkachanOutput < Fluent::Output
         log.warn "out_ikachan: failed to send notice to #{@host}:#{@port}, #{@channel}, message: #{msg}"
       end
     end
-
-    chain.next
   end
 
   private
