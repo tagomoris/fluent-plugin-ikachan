@@ -1,3 +1,5 @@
+require 'net/http'
+require 'uri'
 require 'fluent/plugin/output'
 
 class Fluent::Plugin::IkachanOutput < Fluent::Plugin::Output
@@ -25,8 +27,6 @@ class Fluent::Plugin::IkachanOutput < Fluent::Plugin::Output
 
   def initialize
     super
-    require 'net/http'
-    require 'uri'
   end
 
   def configure(conf)
