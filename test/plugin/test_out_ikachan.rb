@@ -488,13 +488,14 @@ class IkachanOutputTest < Test::Unit::TestCase
     port = d.instance.port
     client = Net::HTTP.start(host, port)
 
-    assert_equal '200', client.request_post('/', '').code
-    assert_equal '200', client.request_post('/join', 'channel=#test').code
+    header = {"Content-Type" => "application/x-www-form-urlencoded"}
+    assert_equal '200', client.request_post('/', '', header).code
+    assert_equal '200', client.request_post('/join', 'channel=#test', header).code
 
     assert_equal 0, @posted.size
 
-    assert_equal '200', client.request_post('/notice', 'channel=#test&message=NOW TESTING').code
-    assert_equal '200', client.request_post('/privmsg', 'channel=#test&message=NOW TESTING 2').code
+    assert_equal '200', client.request_post('/notice', 'channel=#test&message=NOW TESTING', header).code
+    assert_equal '200', client.request_post('/privmsg', 'channel=#test&message=NOW TESTING 2', header).code
 
     assert_equal 2, @posted.size
 
@@ -503,12 +504,12 @@ class IkachanOutputTest < Test::Unit::TestCase
     assert_equal 'NOW TESTING', @posted[0][:message]
 
     @mount = '/ikachan/'
-    assert_equal '404', client.request_post('/', '').code
-    assert_equal '404', client.request_post('/join', 'channel=#test').code
+    assert_equal '404', client.request_post('/', '', header).code
+    assert_equal '404', client.request_post('/join', 'channel=#test', header).code
 
-    assert_equal '200', client.request_post('/ikachan/', '').code
-    assert_equal '404', client.request_post('/ikachan/test', 'channel=#test').code
-    assert_equal '200', client.request_post('/ikachan/join', 'channel=#test').code
+    assert_equal '200', client.request_post('/ikachan/', '', header).code
+    assert_equal '404', client.request_post('/ikachan/test', 'channel=#test', header).code
+    assert_equal '200', client.request_post('/ikachan/join', 'channel=#test', header).code
   end
 
   def teardown
