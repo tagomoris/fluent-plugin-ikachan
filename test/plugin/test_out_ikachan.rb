@@ -402,10 +402,10 @@ class IkachanOutputTest < Test::Unit::TestCase
     @mount = '/' # @mount 's first and last char should be '/'. it is for dummy server path handling
     @dummy_server_thread = Thread.new do
       srv = if ENV['VERBOSE']
-              WEBrick::HTTPServer.new({:BindAddress => '127.0.0.1', :Port => IKACHAN_TEST_LISTEN_PORT})
+              WEBrick::HTTPServer.new({BindAddress: '127.0.0.1', Port: IKACHAN_TEST_LISTEN_PORT})
             else
               logger = WEBrick::Log.new('/dev/null', WEBrick::BasicLog::DEBUG)
-              WEBrick::HTTPServer.new({:BindAddress => '127.0.0.1', :Port => IKACHAN_TEST_LISTEN_PORT, :Logger => logger, :AccessLog => []})
+              WEBrick::HTTPServer.new({BindAddress: '127.0.0.1', Port: IKACHAN_TEST_LISTEN_PORT, Logger: logger, AccessLog: []})
             end
       begin
         srv.mount_proc('/') { |req,res| # /join, /notice, /privmsg
@@ -450,7 +450,7 @@ class IkachanOutputTest < Test::Unit::TestCase
             next
           end
 
-          @posted.push({ :method => method, :channel => post_param['channel'].first, :message => post_param['message'].first})
+          @posted.push({ method: method, channel: post_param['channel'].first, message: post_param['message'].first})
           res.status = 200
         }
         srv.start

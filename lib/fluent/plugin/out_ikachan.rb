@@ -10,20 +10,20 @@ class Fluent::Plugin::IkachanOutput < Fluent::Plugin::Output
     define_method("log") { $log }
   end
 
-  config_param :host, :string, :default => nil
-  config_param :port, :integer, :default => 4979
-  config_param :base_uri, :string, :default => nil
-  config_param :ssl, :bool, :default => nil
-  config_param :verify_ssl, :bool, :default => false
+  config_param :host, :string, default: nil
+  config_param :port, :integer, default: 4979
+  config_param :base_uri, :string, default: nil
+  config_param :ssl, :bool, default: nil
+  config_param :verify_ssl, :bool, default: false
   config_param :channel, :string
-  config_param :message, :string, :default => nil
-  config_param :out_keys, :string, :default => ""
-  config_param :privmsg_message, :string, :default => nil
-  config_param :privmsg_out_keys, :string, :default => ""
-  config_param :time_key, :string, :default => nil
-  config_param :time_format, :string, :default => nil
-  config_param :tag_key, :string, :default => 'tag'
-  config_param :post_per_line, :bool, :default => true
+  config_param :message, :string, default: nil
+  config_param :out_keys, :string, default: ""
+  config_param :privmsg_message, :string, default: nil
+  config_param :privmsg_out_keys, :string, default: ""
+  config_param :time_key, :string, default: nil
+  config_param :time_format, :string, default: nil
+  config_param :tag_key, :string, default: 'tag'
+  config_param :post_per_line, :bool, default: true
 
   def configure(conf)
     super
