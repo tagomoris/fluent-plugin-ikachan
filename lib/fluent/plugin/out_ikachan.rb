@@ -25,10 +25,6 @@ class Fluent::Plugin::IkachanOutput < Fluent::Plugin::Output
   config_param :tag_key, :string, :default => 'tag'
   config_param :post_per_line, :bool, :default => true
 
-  def initialize
-    super
-  end
-
   def configure(conf)
     super
 
