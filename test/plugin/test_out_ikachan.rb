@@ -461,7 +461,7 @@ class IkachanOutputTest < Test::Unit::TestCase
     # to wait completion of dummy server.start()
     require 'thread'
     cv = ConditionVariable.new
-    watcher = Thread.new {
+    Thread.new {
       connected = false
       while not connected
         begin

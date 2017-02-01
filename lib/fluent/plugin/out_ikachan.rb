@@ -1,14 +1,10 @@
+require 'fluent/plugin/output'
+
 require 'net/http'
 require 'uri'
-require 'fluent/plugin/output'
 
 class Fluent::Plugin::IkachanOutput < Fluent::Plugin::Output
   Fluent::Plugin.register_output('ikachan', self)
-
-  # Define `log` method for v0.10.42 or earlier
-  unless method_defined?(:log)
-    define_method("log") { $log }
-  end
 
   config_param :host, :string, default: nil
   config_param :port, :integer, default: 4979
@@ -100,10 +96,6 @@ class Fluent::Plugin::IkachanOutput < Fluent::Plugin::Output
     end
   end
 
-  def shutdown
-    super
-  end
-
   def process(tag, es)
     posts = []
 
@@ -121,13 +113,13 @@ class Fluent::Plugin::IkachanOutput < Fluent::Plugin::Output
       begin
         if @post_per_line
           msg.split("\n").each do |m|
-            res = http_post_request(uri, {'channel' => @channel, 'message' => m})
+            http_post_request(uri, {'channel' => @channel, 'message' => m})
           end
         else
-          res = http_post_request(uri, {'channel' => @channel, 'message' => msg})
+          http_post_request(uri, {'channel' => @channel, 'message' => msg})
         end
-      rescue
-        log.warn "out_ikachan: failed to send notice to #{@host}:#{@port}, #{@channel}, message: #{msg}"
+      rescue => e
+        log.warn "failed to send notice", host: @host, port: @port, channel: @channel, message: msg, error: e
       end
     end
   end
@@ -135,9 +127,6 @@ class Fluent::Plugin::IkachanOutput < Fluent::Plugin::Output
   private
 
   def evaluate_message(message, out_keys, tag, time, record)
-    values = []
-    last = out_keys.length - 1
-
     values = out_keys.map do |key|
       case key
       when @time_key
