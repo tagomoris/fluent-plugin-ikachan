@@ -10,6 +10,13 @@ About Ikachan:
  * https://metacpan.org/module/ikachan
  * http://blog.yappo.jp/yappo/archives/000760.html (Japanese)
 
+## Requirements
+
+| fluent-plugin-ikachan | fluentd    | ruby   |
+|-----------------------|------------|--------|
+| >= 1.0.0              | >= v0.14.0 | >= 2.1 |
+| <  1.0.0              | <  v0.14.0 | >= 1.9 |
+
 ## Configuration
 
 ### IkachanOutput
