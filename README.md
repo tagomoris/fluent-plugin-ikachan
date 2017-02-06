@@ -1,4 +1,4 @@
-# fluent-plugin-ikachan
+# fluent-plugin-ikachan, a plugin for [Fluentd](http://fluentd.org)
 
 ## Component
 
